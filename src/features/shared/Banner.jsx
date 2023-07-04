@@ -37,7 +37,7 @@ const Item = ({ value, prefix = '$', text = '', loading }) => {
   )
 }
 
-const Banner = ({ dailVolume = 0, tokenHolders = 0, totalLocked = 0, tokenStakeHolders = 0, loading = true }) => {
+const Banner = ({ dailyVolume = 0, tokenHolders = 0, totalLocked = 0, tokenStakeHolders = 0, loading = true }) => {
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -52,9 +52,9 @@ const Banner = ({ dailVolume = 0, tokenHolders = 0, totalLocked = 0, tokenStakeH
       className="banner"
     >
       <div className="banner__container">
-        <Item value={dailVolume} text="Daily Volume" loading={loading} />
+        <Item value={dailyVolume} text="Daily Volume" loading={loading} />
         <Item value={tokenHolders} text="Token holders" prefix="" loading={loading} />
-        <Item value={totalLocked} text="Total Value Locked" loading={loading} />
+        <Item value={totalLocked} text="Total Value Locked" />
         <Item value={tokenStakeHolders} text={`Volt staker's earning (Week)`} loading={loading} prefix="" />
       </div>
     </motion.div>

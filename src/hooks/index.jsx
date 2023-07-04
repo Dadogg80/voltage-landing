@@ -1,9 +1,9 @@
 import { ApolloClient, gql, InMemoryCache } from '@apollo/client'
 import { ChainId, Token, TokenAmount } from '@voltage-finance/sdk'
-import BigNumberJS from 'bignumber.js'
-
+import BigNumberJS from 'bignumber.js';
 import { BigNumber, ethers } from 'ethers'
 import { useEffect, useState } from 'react'
+
 export const STABLESWAP_SUBGRAPH_URL = 'https://api.thegraph.com/subgraphs/name/t0mcr8se/stableswap-subgraph' // TODO: deploy under voltfinance
 export const FUSESWAP_SUBGRAPH_URL = 'https://api.thegraph.com/subgraphs/name/fuseio/fuseswap'
 
@@ -35,6 +35,7 @@ export const FUSE_FUSD = new Token(
   'fUSD',
   'Fuse Dollar'
 )
+
 export const FUSE_BUSD = new Token(
   ChainId.FUSE,
   '0x6a5F6A8121592BeCd6747a38d67451B310F7f156',

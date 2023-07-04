@@ -48,7 +48,7 @@ const Navbar = ({
   ],
 }) => {
   const location = useLocation();
-  console.log(location.pathname);
+//  console.log(location.pathname);
   return (
     <div className="navbar">
       <Link className="navbar__container" to={"/"}>

@@ -1,6 +1,6 @@
 import { ApolloClient, gql, InMemoryCache, useQuery } from '@apollo/client'
 import { sum, sumBy } from 'lodash'
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import AngelDoa from '../assets/angeldoa.png'
 import Aria from '../assets/aria.png'
 import As from '../assets/as.png'
@@ -49,7 +49,6 @@ import Navbar from './shared/Navbar'
 import Padding from './shared/Padding'
 import TextAnimation from './shared/TextAnimation'
 
-import { useState } from 'react'
 import VoltPhones from '../assets/phones.png'
 
 const GET_TOTAL_VOLUME = gql`
@@ -78,6 +77,16 @@ const GET_TOKEN_HOLDERS = gql`
     }
   }
 `
+
+// Defines a GraphQL query to get the reserveUSD for all pairs
+const GET_TOTAL_DEX_LIQUIDITY = gql`
+    query dexLiquidityQuery {
+        pairs(first: 1000) {
+            reserveUSD
+        }
+    }
+`
+
 const client = new ApolloClient({
   uri: 'https://api.thegraph.com/subgraphs/name/voltfinance/voltage-exchange',
   cache: new InMemoryCache(),
@@ -92,21 +101,37 @@ const clientVoltStakeHolders = new ApolloClient({
   cache: new InMemoryCache(),
 })
 
-function Home() {
-  const totalVolume = useQuery(GET_TOTAL_VOLUME, { client })
+// Get the Apollo Client instance
+const clientDEX = new ApolloClient({
+  uri: "https://api.thegraph.com/subgraphs/name/voltfinance/voltage-exchange-v2",
+  cache: new InMemoryCache()
+});
 
-  const tokenHolders = useQuery(GET_TOKEN_HOLDERS, {
-    client: clientVoltHolders,
-  })
+
+function Home() {
+  const [tvlDex, setTVLDex] = useState(null);
   let [tokenStakeHolders, setTokenStakeHolders] = useState(-1)
 
-  let stableSwapTotalLiquiditiy = useStableswapTotalLiquidity(18)
+  const totalVolume = useQuery(GET_TOTAL_VOLUME, { client })
+  const tokenHolders = useQuery(GET_TOKEN_HOLDERS, {client: clientVoltHolders,})
+  const dexTotalValue = useQuery(GET_TOTAL_DEX_LIQUIDITY, {client: clientDEX,})
+
+  useEffect(() => {
+    if (dexTotalValue?.data) {
+      const tvlDex = dexTotalValue.data.pairs.reduce((total, pair) => total + parseFloat(pair.reserveUSD), 0);
+      setTVLDex(tvlDex);
+    }
+  }, [dexTotalValue.data]);
+  
+  
+  let stableSwapTotalLiquidity = useStableswapTotalLiquidity(18)
 
   const getLastSevenDaysStakerEarnings = async () => {
     const previousSevenDays = new Array(7).fill().map((_, index) => {
       let date = new Date()
       return Math.floor(date.setDate(date.getDate() - index) / 8.64e7) + ''
     })
+
     let results = await Promise.all(
       previousSevenDays.map(async (day) => {
         return await clientVoltStakeHolders.query({
@@ -117,6 +142,7 @@ function Home() {
         })
       })
     )
+
     let sumOfPreviousSevenDays = sum(
       results
         .map(({ data: { servingDayDatas } }) => {
@@ -126,9 +152,14 @@ function Home() {
     )
     return setTokenStakeHolders(sumOfPreviousSevenDays)
   }
+
   useEffect(() => {
     getLastSevenDaysStakerEarnings()
+
   }, [])
+  
+  
+
   return (
     <>
       <div className="h-screen w-screen max-h-page relative ">
@@ -178,10 +209,10 @@ function Home() {
             loading={
               totalVolume.loading ||
               tokenHolders.loading ||
-              stableSwapTotalLiquiditiy === -1 ||
+              tvlDex || 
               tokenStakeHolders === -1
             }
-            dailVolume={
+            dailyVolume={
               !totalVolume.loading &&
               sumBy(totalVolume.data.uniswapDayDatas, ({ dailyVolumeUSD }) => {
                 return parseFloat(dailyVolumeUSD)
@@ -190,7 +221,7 @@ function Home() {
                 1
             }
             tokenHolders={!tokenHolders.loading && tokenHolders?.data?.systemInfos[0]?.userCount}
-            totalLocked={stableSwapTotalLiquiditiy}
+            totalLocked={tvlDex}
             tokenStakeHolders={tokenStakeHolders}
           />
         </div>
