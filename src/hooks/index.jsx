@@ -217,10 +217,13 @@ export function useStableswapTotalLiquidity(decimals = 0) {
   let [totalLocked, setTotalLocked] = useState(0)
 
   const getData = async () => {
+
     const usdPrices = await getStablecoinPrices()
+   
     const { data } = await stableswapSubgraphClient.query({
       query: stableswapTokenBalancesQuery,
     })
+    
     const {
       data: { uniswapFactories },
     } = await client.query({ query: GET_TOTAL_LOCKED })

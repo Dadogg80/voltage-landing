@@ -52,10 +52,10 @@ const Banner = ({ dailyVolume = 0, tokenHolders = 0, totalLocked = 0, tokenStake
       className="banner"
     >
       <div className="banner__container">
-        <Item value={dailyVolume} text="Daily Volume" loading={loading} />
-        <Item value={tokenHolders} text="Token holders" prefix="" loading={loading} />
+        <Item value={dailyVolume} text="Daily Volume"  />
+        <Item value={tokenHolders} text="Token holders" prefix=""  />
         <Item value={totalLocked} text="Total Value Locked" />
-        <Item value={tokenStakeHolders} text={`Volt staker's earning (Week)`} loading={loading} prefix="" />
+        <Item value={tokenStakeHolders} text={`Volt staker's earning (Week)`} prefix="" />
       </div>
     </motion.div>
   )

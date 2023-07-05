@@ -87,6 +87,14 @@ const GET_TOTAL_DEX_LIQUIDITY = gql`
     }
 `
 
+const GET_TOTAL_FUSD_VALUE = gql`
+  {
+    accounts {
+      id
+    }
+  }
+`
+
 const client = new ApolloClient({
   uri: 'https://api.thegraph.com/subgraphs/name/voltfinance/voltage-exchange',
   cache: new InMemoryCache(),
@@ -102,8 +110,14 @@ const clientVoltStakeHolders = new ApolloClient({
 })
 
 // Get the Apollo Client instance
-const clientDEX = new ApolloClient({
+const clientDEXLiquidity = new ApolloClient({
   uri: "https://api.thegraph.com/subgraphs/name/voltfinance/voltage-exchange-v2",
+  cache: new InMemoryCache()
+});
+
+// Get the Apollo Client instance
+const clientFUSDValue = new ApolloClient({
+  uri: "https://api.thegraph.com/subgraphs/name/voltfinance/fusd-subgraph",
   cache: new InMemoryCache()
 });
 
@@ -114,8 +128,12 @@ function Home() {
 
   const totalVolume = useQuery(GET_TOTAL_VOLUME, { client })
   const tokenHolders = useQuery(GET_TOKEN_HOLDERS, {client: clientVoltHolders,})
-  const dexTotalValue = useQuery(GET_TOTAL_DEX_LIQUIDITY, {client: clientDEX,})
+  const dexTotalValue = useQuery(GET_TOTAL_DEX_LIQUIDITY, {client: clientDEXLiquidity,})
+  const fusdTotalValue = useQuery(GET_TOTAL_FUSD_VALUE, {client: clientFUSDValue,})
 
+  console.log("FUSD TOTAL VALUE",fusdTotalValue)
+
+  /// Get the total liquidity of all pairs in the DEX
   useEffect(() => {
     if (dexTotalValue?.data) {
       const tvlDex = dexTotalValue.data.pairs.reduce((total, pair) => total + parseFloat(pair.reserveUSD), 0);
@@ -209,7 +227,7 @@ function Home() {
             loading={
               totalVolume.loading ||
               tokenHolders.loading ||
-              tvlDex || 
+              stableSwapTotalLiquidity || 
               tokenStakeHolders === -1
             }
             dailyVolume={
