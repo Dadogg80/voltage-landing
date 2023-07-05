@@ -102,11 +102,13 @@ export const tokenPriceQuery = gql`
   }
 `
 
+// Function used to query the stablecoin prices from GraphQL
 export async function getStablecoinPrices() {
   // Stablecoin prices for the stable pool
   const fusd = await getTokenPrice(tokenPriceQuery, {
     id: FUSE_FUSD.address.toLowerCase(),
   })
+
   const usdt = await getTokenPrice(tokenPriceQuery, {
     id: FUSE_USDT.address.toLowerCase(),
   })
@@ -129,6 +131,8 @@ export async function getStablecoinPrices() {
     [FUSE_UST.address]: ust,
   }
 }
+
+// Function used to format the decimal amount from Wei to native asset 
 export const tryFormatDecimalAmount = (amount, tokenDecimals = 18, decimals = 0) => {
   if (!amount || !tokenDecimals) return undefined
 
@@ -144,11 +148,16 @@ export const tryFormatDecimalAmount = (amount, tokenDecimals = 18, decimals = 0)
   return undefined
 }
 
+
+/** STABLESWAP GRAPHQL QUERY AND CLIENT */
+
+// creates the client used to query the stableswap subgraph 
 export const stableswapSubgraphClient = new ApolloClient({
   uri: STABLESWAP_SUBGRAPH_URL,
   cache: new InMemoryCache(),
 })
 
+// The query to get the stableswap token balances
 const stableswapTokenBalancesQuery = gql`
   {
     swaps {
@@ -160,6 +169,8 @@ const stableswapTokenBalancesQuery = gql`
     }
   }
 `
+
+/// Function used to query the stableswap token balances from GraphQL
 export const getStableswapTokenBalances = async (query = stableswapTokenBalancesQuery) => {
   const result = await stableswapSubgraphClient.query({
     query: stableswapTokenBalancesQuery,
@@ -167,6 +178,12 @@ export const getStableswapTokenBalances = async (query = stableswapTokenBalances
 
   return result.data?.swaps
 }
+
+
+
+
+/**  TOKENS AND POOLS*/
+
 export const VUSD1 = new Token(
   ChainId.FUSE,
   '0xa3c1046290B490e629E11AcE35863CB0CAe382aB',
@@ -197,6 +214,7 @@ export const STABLESWAP_POOLS = {
   },
 }
 
+/// GraphQL query to fetch the total locked value from the stableswap subgraph
 const GET_TOTAL_LOCKED = gql`
   {
     uniswapFactories(first: 1) {
@@ -204,17 +222,22 @@ const GET_TOTAL_LOCKED = gql`
     }
   }
 `
+
+// The client used to query the total locked value from the stableswap subgraph
 const client = new ApolloClient({
   uri: 'https://api.thegraph.com/subgraphs/name/voltfinance/voltage-exchange',
   cache: new InMemoryCache(),
 })
 
+
+// Function used to query the total locked value from the stableswap subgraph and the uniswap subgraph
 export function useStableswapTotalLiquidity(decimals = 0) {
   let [usdPrices, setUsdPrices] = useState(null)
 
   let [data, setData] = useState(null)
   let [stableswapTotalLiquidity, setStableSwapTotalLiquidity] = useState(-1)
   let [totalLocked, setTotalLocked] = useState(0)
+
 
   const getData = async () => {
 
@@ -223,7 +246,8 @@ export function useStableswapTotalLiquidity(decimals = 0) {
     const { data } = await stableswapSubgraphClient.query({
       query: stableswapTokenBalancesQuery,
     })
-    
+  
+
     const {
       data: { uniswapFactories },
     } = await client.query({ query: GET_TOTAL_LOCKED })
@@ -250,9 +274,13 @@ export function useStableswapTotalLiquidity(decimals = 0) {
         }, BigNumber.from('0'))
       )
     }, BigNumber.from('0'))
+
+    // Add the total locked value from the uniswap subgraph to the total locked value from the stableswap subgraph
     const totalLockedPlusSwap = totalLocked + parseFloat(tryFormatDecimalAmount(liquidity.toString(), 18, decimals))
 
     setStableSwapTotalLiquidity(totalLockedPlusSwap)
+
   }, [data, usdPrices, decimals, totalLocked])
+  
   return stableswapTotalLiquidity
 }

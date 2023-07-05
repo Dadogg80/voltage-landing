@@ -48,9 +48,15 @@ import Image from './shared/Image'
 import Navbar from './shared/Navbar'
 import Padding from './shared/Padding'
 import TextAnimation from './shared/TextAnimation'
-
 import VoltPhones from '../assets/phones.png'
 
+
+
+
+/** GRAPHQL QUERIES */
+
+
+// Defines a GraphQL query to get the total volume for the last 7 days
 const GET_TOTAL_VOLUME = gql`
   {
     uniswapDayDatas(first: 7, orderBy: date, orderDirection: desc) {
@@ -59,6 +65,7 @@ const GET_TOTAL_VOLUME = gql`
   }
 `
 
+// Defines a GraphQL query to get the Volt staker earnings
 const GET_VOLT_STAKER_EARNING = gql`
   query getSystemInfo($id: String) {
     servingDayDatas(where: { id: $id }) {
@@ -69,6 +76,7 @@ const GET_VOLT_STAKER_EARNING = gql`
   }
 `
 
+// Defines a GraphQL query to get the total number of token holders
 const GET_TOKEN_HOLDERS = gql`
   {
     systemInfos(first: 5) {
@@ -87,51 +95,89 @@ const GET_TOTAL_DEX_LIQUIDITY = gql`
     }
 `
 
-const GET_TOTAL_FUSD_VALUE = gql`
-  {
-    accounts {
-      id
+// Defines a GraphQL query to get the total value of all fUSD
+const GET_TOTAL_FUSD_AMOUNT = gql`
+  query fusdTotalSupplyQuery {
+    token(id: "0xd0ce1b4a349c35e61af02f5971e71ac502441e49") {
+      totalSupply { 
+        simple
+      }
     }
   }
 `
 
+const GET_TOTAL_SFUSE_AMOUNT = gql`
+  query fuseStakingQuery {
+    liquidStakings {
+      id
+      sFuse {
+        id
+      }
+      ratio
+      totalStaked
+    }
+  }
+`
+
+
+
+/** APOLLO CLIENTS INSTANCES */
+
+
+// Get the Apollo Client instance for voltage-exchange subgraph
 const client = new ApolloClient({
   uri: 'https://api.thegraph.com/subgraphs/name/voltfinance/voltage-exchange',
   cache: new InMemoryCache(),
 })
 
+// Get the Apollo Client instance for volt-holders subgraph
 const clientVoltHolders = new ApolloClient({
   uri: 'https://api.thegraph.com/subgraphs/name/t0mcr8se/volt-holders-subgraph',
   cache: new InMemoryCache(),
 })
+
+// Get the Apollo Client instance for volt-stake-holders from the makerv2-fuse subgraph
 const clientVoltStakeHolders = new ApolloClient({
   uri: 'https://api.thegraph.com/subgraphs/name/t0mcr8se/makerv2-fuse',
   cache: new InMemoryCache(),
 })
 
-// Get the Apollo Client instance
+// Get the Apollo Client instance for DexLiquidity from the voltage exchange v2 subgraph
 const clientDEXLiquidity = new ApolloClient({
   uri: "https://api.thegraph.com/subgraphs/name/voltfinance/voltage-exchange-v2",
   cache: new InMemoryCache()
 });
 
-// Get the Apollo Client instance
-const clientFUSDValue = new ApolloClient({
+// Get the Apollo Client instance for FUSDAmount from the fusd-subgraph
+const clientFUSDAmount = new ApolloClient({
   uri: "https://api.thegraph.com/subgraphs/name/voltfinance/fusd-subgraph",
+  cache: new InMemoryCache()
+});
+
+// Get the Apollo Client instance for Staked FUSE amount from the fuse-liquid-staking subgraph
+const clientSFUSEAmount = new ApolloClient({
+  uri: "https://api.thegraph.com/subgraphs/name/voltfinance/fuse-liquid-staking",
   cache: new InMemoryCache()
 });
 
 
 function Home() {
-  const [tvlDex, setTVLDex] = useState(null);
+  /// State to store the total values locked in the platform
+  const [tvlDex, setTVLDex] = useState(0);
+  const [tvlFusd, setTVLFusd] = useState(0);
+  const [tvlSFuse, setTVLsFuse] = useState(0);
+  const [tvlPlatform, setTVLplatform] = useState(0);
+
   let [tokenStakeHolders, setTokenStakeHolders] = useState(-1)
 
-  const totalVolume = useQuery(GET_TOTAL_VOLUME, { client })
+  // Get the total liquidity of stablecoins and Uniswap liquidity in the DEX
+  let stableSwapTotalLiquidity = useStableswapTotalLiquidity(18)
+
+ const totalVolume = useQuery(GET_TOTAL_VOLUME, { client })
   const tokenHolders = useQuery(GET_TOKEN_HOLDERS, {client: clientVoltHolders,})
   const dexTotalValue = useQuery(GET_TOTAL_DEX_LIQUIDITY, {client: clientDEXLiquidity,})
-  const fusdTotalValue = useQuery(GET_TOTAL_FUSD_VALUE, {client: clientFUSDValue,})
-
-  console.log("FUSD TOTAL VALUE",fusdTotalValue)
+  const fusdTotalValue = useQuery(GET_TOTAL_FUSD_AMOUNT, {client: clientFUSDAmount,})
+  const sFuseStakedValue = useQuery(GET_TOTAL_SFUSE_AMOUNT, {client: clientSFUSEAmount,})
 
   /// Get the total liquidity of all pairs in the DEX
   useEffect(() => {
@@ -141,8 +187,30 @@ function Home() {
     }
   }, [dexTotalValue.data]);
   
-  
-  let stableSwapTotalLiquidity = useStableswapTotalLiquidity(18)
+  /// Get the total value of all fUSD
+  useEffect(() => {
+    if (fusdTotalValue?.data) {
+      const tvlFUSD = parseFloat(fusdTotalValue.data.token.totalSupply.simple);
+      setTVLFusd(tvlFUSD);
+    }
+  }, [fusdTotalValue.data]);
+ 
+  /// Get the total value of all staked FUSE
+  useEffect(() => {
+    if (sFuseStakedValue?.data) {
+      const tvlStakedFuse = parseFloat(sFuseStakedValue.data.liquidStakings[0].totalStaked) / 1e18;
+      setTVLsFuse(tvlStakedFuse);
+    }
+  }, [sFuseStakedValue.data]);
+
+  /// Get the TVL for platform 
+  useEffect(() => {
+    setTVLplatform(tvlDex + tvlFusd + tvlSFuse)
+  }, [tvlDex, tvlFusd, tvlSFuse])
+
+
+  console.log(tvlPlatform)
+ 
 
   const getLastSevenDaysStakerEarnings = async () => {
     const previousSevenDays = new Array(7).fill().map((_, index) => {
@@ -227,7 +295,7 @@ function Home() {
             loading={
               totalVolume.loading ||
               tokenHolders.loading ||
-              stableSwapTotalLiquidity || 
+              tvlPlatform || 
               tokenStakeHolders === -1
             }
             dailyVolume={
@@ -239,7 +307,7 @@ function Home() {
                 1
             }
             tokenHolders={!tokenHolders.loading && tokenHolders?.data?.systemInfos[0]?.userCount}
-            totalLocked={tvlDex}
+            totalLocked={tvlPlatform}
             tokenStakeHolders={tokenStakeHolders}
           />
         </div>
